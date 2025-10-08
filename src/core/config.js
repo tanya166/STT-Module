@@ -1,14 +1,14 @@
 export const config = {
-  deepgramApiKey: 'your_deepgram_key',
 
-  porcupineAccessKey: 'YOUR_PICOVOICE_ACCESS_KEY',
-  usePorcupine: true,
-  wakeWordModel: '/models/Hey-Siri_en_windows_v3_0_0.ppn',
- 
-  
-  wakeWord: 'hey siri',  
+  deepgramApiKey: '272226165d8d5eea138a68836a0762a5cedacede',
+  porcupineAccessKey: 'hJrypE5CeXyKKrED00s+LHz8yNphNaS0XppHTE82TGWfsSOJX/YaLg==',
+
+  usePorcupine: true, 
+  wakeWordModel: '../models/Hi-Siri_en_windows_v3_0_0.ppn',
+  wakeWord: 'Hi-siri',  
   sleepWord: 'stop',   
   
+  // Deepgram settings
   language: 'en-US',
   model: 'nova-2',
   punctuate: true,

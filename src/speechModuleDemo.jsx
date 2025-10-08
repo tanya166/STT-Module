@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSpeechModule } from './core/SpeechModule'; // class
+import { useSpeechModule } from './hooks/useSpeechModule'; 
 import { config } from './core/config.js';
 
 function MyApp() {
@@ -10,37 +10,101 @@ function MyApp() {
   const [interimTranscript, setInterimTranscript] = useState('');
 
   useEffect(() => {
-    // Subscribe to state updates
     usespeechModule.onStateChange = ({ isActive, isListening }) => {
-      setIsActive(isActive);
-      setIsListening(isListening);
+      if (isActive !== undefined) setIsActive(isActive);
+      if (isListening !== undefined) setIsListening(isListening);
     };
 
-    // Subscribe to transcript updates
-    usespeechModule.onTranscriptUpdate = (text) => {
-      setTranscript(text);
+    usespeechModule.onTranscriptUpdate = (text, isFinal) => {
+      if (isFinal) {
+        setTranscript(prev => prev + ' ' + text);
+        setInterimTranscript('');
+      } else {
+        setInterimTranscript(text);
+      }
     };
 
-    // Optional: cleanup on unmount
+
     return () => {
       usespeechModule.stop();
     };
   }, [usespeechModule]);
 
   return (
-    <div>
-      <button onClick={() => usespeechModule.start()}>Start</button>
-      <button onClick={() => usespeechModule.stop()}>Stop</button>
+    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+      <h1>Speech Module Demo</h1>
+      
+      <div style={{ marginBottom: '20px' }}>
+        <button 
+          onClick={() => usespeechModule.start()}
+          style={{ 
+            padding: '10px 20px', 
+            marginRight: '10px',
+            fontSize: '16px',
+            backgroundColor: isListening ? '#ccc' : '#4CAF50',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: isListening ? 'not-allowed' : 'pointer'
+          }}
+          disabled={isListening}
+        >
+          Start Listening
+        </button>
+        <button 
+          onClick={() => usespeechModule.stop()}
+          style={{ 
+            padding: '10px 20px',
+            fontSize: '16px',
+            backgroundColor: !isListening ? '#ccc' : '#f44336',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: !isListening ? 'not-allowed' : 'pointer'
+          }}
+          disabled={!isListening}
+        >
+          Stop
+        </button>
+      </div>
 
-      <p>Status: {isActive ? 'Recording' : 'Waiting for wake word'}</p>
-      <p>Transcript: {transcript}</p>
-
-      {interimTranscript && (
-        <span className="text-slate-400 italic">
-          {transcript && ' '}
-          {interimTranscript}
+      <div style={{ 
+        padding: '15px', 
+        backgroundColor: '#f5f5f5', 
+        borderRadius: '8px',
+        marginBottom: '10px'
+      }}>
+        <strong>Status:</strong> 
+        <span style={{ 
+          marginLeft: '10px',
+          padding: '5px 10px',
+          borderRadius: '4px',
+          backgroundColor: isActive ? '#4CAF50' : '#ff9800',
+          color: 'white',
+          fontWeight: 'bold'
+        }}>
+          {isListening ? (isActive ? '🎤 RECORDING' : '⏸️ Waiting for wake word...') : '❌ Stopped'}
         </span>
-      )}
+      </div>
+
+      <div style={{ 
+        padding: '15px', 
+        backgroundColor: '#fff', 
+        border: '1px solid #ddd',
+        borderRadius: '8px',
+        minHeight: '100px'
+      }}>
+        <strong>Transcript:</strong>
+        <p style={{ marginTop: '10px', fontSize: '16px', lineHeight: '1.6' }}>
+          {transcript}
+          {interimTranscript && (
+            <span style={{ color: '#888', fontStyle: 'italic' }}>
+              {transcript && ' '}
+              {interimTranscript}
+            </span>
+          )}
+        </p>
+      </div>
     </div>
   );
 }

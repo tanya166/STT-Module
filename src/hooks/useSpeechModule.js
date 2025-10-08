@@ -1,7 +1,6 @@
 import { AudioCapture } from '../core/AudioCapture.js';
 import { DeepgramSTT } from '../core/DeepgramSTT.js';
-import { SimpleWakeWord } from '../core/SimpleWakeWord.js';
-import { SpeechModule } from '../core/SpeechModule.js';
+import { SimpleWakeWord } from '../core/simpleWakeWord.js';
 import { PorcupineWakeWord } from '../core/PorcupineWakeWord.js';
 
 export class useSpeechModule {
@@ -10,11 +9,9 @@ export class useSpeechModule {
     this.audioCapture = new AudioCapture();
     this.deepgramSTT = new DeepgramSTT(config.deepgramApiKey, config);
     
-
     this.usePorcupine = config.usePorcupine && config.porcupineAccessKey && config.wakeWordModel;
     
     if (this.usePorcupine) {
-      
       this.porcupineDetector = new PorcupineWakeWord(
         config.wakeWord,
         config.porcupineAccessKey,
@@ -42,7 +39,11 @@ export class useSpeechModule {
   async start() {
     try {
       console.log('🚀 Starting Speech Module...');
-      console.log(`📋 Strategy: Porcupine wake word + Text matching sleep word`);
+      console.log(`📋 Config check:`);
+      console.log(`   - usePorcupine: ${this.usePorcupine}`);
+      console.log(`   - Has porcupineAccessKey: ${!!this.config.porcupineAccessKey}`);
+      console.log(`   - Has wakeWordModel: ${!!this.config.wakeWordModel}`);
+      console.log(`📋 Strategy: ${this.usePorcupine ? 'Porcupine wake word + Text matching sleep word' : 'Text matching for both wake and sleep words'}`);
       
       // Initialize microphone
       const micSuccess = await this.audioCapture.initialize();
@@ -52,17 +53,27 @@ export class useSpeechModule {
 
       // If using Porcupine for wake word
       if (this.usePorcupine) {
-        await this.porcupineDetector.initialize();
-        
-        // Set up Porcupine wake word callback
-        this.porcupineDetector.onWakeWordDetected = () => {
-          this.isActive = true;
-          if (this.onStateChange) this.onStateChange({ isActive: true });
-          console.log('🎤 Wake word detected by Porcupine! Transcription ACTIVE');
-        };
-        
-        // Start Porcupine listening
-        await this.porcupineDetector.start();
+        console.log('🎯 Initializing Porcupine...');
+        try {
+          await this.porcupineDetector.initialize();
+          console.log('✅ Porcupine initialized successfully');
+          
+          // Set up Porcupine wake word callback
+          this.porcupineDetector.onWakeWordDetected = () => {
+            this.isActive = true;
+            if (this.onStateChange) this.onStateChange({ isActive: true });
+            console.log('🎤 Wake word detected by Porcupine! Transcription ACTIVE');
+          };
+          
+          // Start Porcupine listening
+          console.log('🎯 Starting Porcupine listening...');
+          await this.porcupineDetector.start();
+          console.log('✅ Porcupine is now listening for wake words');
+        } catch (porcupineError) {
+          console.error('❌ Porcupine failed to start:', porcupineError);
+          console.log('⚠️ Falling back to text-based wake word detection');
+          this.usePorcupine = false;
+        }
       }
 
       // Connect to Deepgram (always needed for transcription)
@@ -70,14 +81,14 @@ export class useSpeechModule {
 
       // Set up transcript handler
       this.deepgramSTT.onTranscript = (text, isFinal) => {
-        // Only log transcripts when active to reduce noise
-        if (this.isActive || !this.usePorcupine) {
-          console.log('Received transcript:', text);
-        }
+        console.log(`📝 Transcript (${isFinal ? 'FINAL' : 'interim'}):`, text);
 
         // Wake word detection from text (if NOT using Porcupine)
         if (!this.usePorcupine && !this.isActive) {
-          if (this.simpleDetector.checkForWakeWord(text)) {
+          const foundWakeWord = this.simpleDetector.checkForWakeWord(text);
+          console.log(`🔍 Checking for wake word in: "${text}" - Found: ${foundWakeWord}`);
+          
+          if (foundWakeWord) {
             this.isActive = true;
             if (this.onStateChange) this.onStateChange({ isActive: true });
             console.log('🎤 Wake word detected by text matching! Transcription ACTIVE');
@@ -90,7 +101,7 @@ export class useSpeechModule {
             this.onTranscriptUpdate(text, isFinal);
           }
 
-          // ALWAYS use text matching for sleep word (Option 1)
+          // ALWAYS use text matching for sleep word
           if (this.simpleDetector.checkForSleepWord(text)) {
             this.isActive = false;
             if (this.onStateChange) this.onStateChange({ isActive: false });
@@ -106,8 +117,10 @@ export class useSpeechModule {
       
       console.log(`✅ Speech Module ready`);
     } catch (err) {
-      console.error('SpeechModule start failed:', err);
-      this.onStateChange?.({ isListening: false, isActive: false });
+      console.error('❌ SpeechModule start failed:', err);
+      if (this.onStateChange) {
+        this.onStateChange({ isListening: false, isActive: false });
+      }
       throw err;
     }
   }
