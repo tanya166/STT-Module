@@ -9,14 +9,18 @@ export class useSpeechModule {
     this.audioCapture = new AudioCapture();
     this.deepgramSTT = new DeepgramSTT(config.deepgramApiKey, config);
     this.usePorcupine = config.usePorcupine && config.porcupineAccessKey && config.wakeWordModel;
+    
     if (this.usePorcupine) {
       this.porcupineDetector = new PorcupineWakeWord(
         config.wakeWord,
         config.porcupineAccessKey,
         config.wakeWordModel
       );
-      this.simpleDetector = new SimpleWakeWord(null, config.sleepWord);
-    } 
+    }
+    
+    // ALWAYS create simpleDetector with BOTH wake and sleep words for fallback
+    this.simpleDetector = new SimpleWakeWord(config.wakeWord, config.sleepWord);
+    
     this.isActive = false;
     this.isListening = false;
     this.mediaRecorder = null;
