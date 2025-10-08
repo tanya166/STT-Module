@@ -1,100 +1,163 @@
-import { useState, useEffect, useRef } from 'react';
-import { SpeechModule } from '../core/SpeechModule.js';
+import { AudioCapture } from '../core/AudioCapture.js';
 import { DeepgramSTT } from '../core/DeepgramSTT.js';
+import { SimpleWakeWord } from '../core/SimpleWakeWord.js';
+import { SpeechModule } from '../core/SpeechModule.js';
+import { PorcupineWakeWord } from '../core/PorcupineWakeWord.js';
 
-export const useSpeechModule = (config) => {
-  const [isListening, setIsListening] = useState(false);
-  const [isActive, setIsActive] = useState(false);
-  const [transcript, setTranscript] = useState('');
-  const [interimTranscript, setInterimTranscript] = useState(''); // ← Add this
-  const [error, setError] = useState(null);
-  const [connectionStatus, setConnectionStatus] = useState('idle');
-  
-  const moduleRef = useRef(null);
-  const transcriptHistoryRef = useRef([]);
-
-  useEffect(() => {
-    moduleRef.current = new SpeechModule(config);
-
-    // ← Update this callback
-    moduleRef.current.onTranscriptUpdate = (text, isFinal) => {
-      if (isFinal) {
-        // Final result - add to history
-        transcriptHistoryRef.current.push(text);
-        setTranscript(transcriptHistoryRef.current.join(' '));
-        setInterimTranscript(''); // Clear interim
-      } else {
-        // Interim result - show in real-time
-        setInterimTranscript(text);
-      }
-    };
-
-    moduleRef.current.onStateChange = (state) => {
-      if ('isListening' in state) setIsListening(state.isListening);
-      if ('isActive' in state) {
-        setIsActive(state.isActive);
-        if (state.isActive) {
-          transcriptHistoryRef.current = [];
-          setTranscript('');
-          setInterimTranscript(''); // ← Clear interim too
-        }
-      }
-    };
-
-    return () => {
-      if (moduleRef.current) {
-        moduleRef.current.stop();
-      }
-    };
-  }, []);
-
-  const testConnection = async () => {
-    setConnectionStatus('testing');
-    setError(null);
+export class useSpeechModule {
+  constructor(config, WakeWordClass = null) {
+    this.config = config;
+    this.audioCapture = new AudioCapture();
+    this.deepgramSTT = new DeepgramSTT(config.deepgramApiKey, config);
     
-    try {
-      const testSTT = new DeepgramSTT(config.deepgramApiKey, config);
-      await testSTT.connect();
-      testSTT.disconnect();
-      setConnectionStatus('connected');
-      return true;
-    } catch (err) {
-      setError(err.message);
-      setConnectionStatus('failed');
-      return false;
+
+    this.usePorcupine = config.usePorcupine && config.porcupineAccessKey && config.wakeWordModel;
+    
+    if (this.usePorcupine) {
+      
+      this.porcupineDetector = new PorcupineWakeWord(
+        config.wakeWord,
+        config.porcupineAccessKey,
+        config.wakeWordModel
+      );
+      
+      // Simple text matching for sleep word
+      this.simpleDetector = new SimpleWakeWord(null, config.sleepWord);
+    } else {
+      // Fallback: Simple text matching for both
+      this.simpleDetector = new SimpleWakeWord(
+        config.wakeWord,
+        config.sleepWord
+      );
     }
-  };
+    
+    this.isActive = false;
+    this.isListening = false;
+    this.mediaRecorder = null;
+    
+    this.onTranscriptUpdate = null;
+    this.onStateChange = null;
+  }
 
-  const start = async () => {
+  async start() {
     try {
-      setError(null);
-      setConnectionStatus('testing');
-      await moduleRef.current.start();
-      setConnectionStatus('connected');
+      console.log('🚀 Starting Speech Module...');
+      console.log(`📋 Strategy: Porcupine wake word + Text matching sleep word`);
+      
+      // Initialize microphone
+      const micSuccess = await this.audioCapture.initialize();
+      if (!micSuccess) {
+        throw new Error('Could not access microphone');
+      }
+
+      // If using Porcupine for wake word
+      if (this.usePorcupine) {
+        await this.porcupineDetector.initialize();
+        
+        // Set up Porcupine wake word callback
+        this.porcupineDetector.onWakeWordDetected = () => {
+          this.isActive = true;
+          if (this.onStateChange) this.onStateChange({ isActive: true });
+          console.log('🎤 Wake word detected by Porcupine! Transcription ACTIVE');
+        };
+        
+        // Start Porcupine listening
+        await this.porcupineDetector.start();
+      }
+
+      // Connect to Deepgram (always needed for transcription)
+      await this.deepgramSTT.connect();
+
+      // Set up transcript handler
+      this.deepgramSTT.onTranscript = (text, isFinal) => {
+        // Only log transcripts when active to reduce noise
+        if (this.isActive || !this.usePorcupine) {
+          console.log('Received transcript:', text);
+        }
+
+        // Wake word detection from text (if NOT using Porcupine)
+        if (!this.usePorcupine && !this.isActive) {
+          if (this.simpleDetector.checkForWakeWord(text)) {
+            this.isActive = true;
+            if (this.onStateChange) this.onStateChange({ isActive: true });
+            console.log('🎤 Wake word detected by text matching! Transcription ACTIVE');
+          }
+        }
+
+        // If active, emit transcripts
+        if (this.isActive) {
+          if (this.onTranscriptUpdate) {
+            this.onTranscriptUpdate(text, isFinal);
+          }
+
+          // ALWAYS use text matching for sleep word (Option 1)
+          if (this.simpleDetector.checkForSleepWord(text)) {
+            this.isActive = false;
+            if (this.onStateChange) this.onStateChange({ isActive: false });
+            console.log('😴 Sleep word detected by text matching! Transcription PAUSED');
+          }
+        }
+      };
+
+      // Start streaming audio to Deepgram
+      this.startAudioStreaming();
+      this.isListening = true;
+      if (this.onStateChange) this.onStateChange({ isListening: true });
+      
+      console.log(`✅ Speech Module ready`);
     } catch (err) {
-      setError(err.message);
-      setConnectionStatus('failed');
-      console.error('Failed to start:', err);
+      console.error('SpeechModule start failed:', err);
+      this.onStateChange?.({ isListening: false, isActive: false });
+      throw err;
     }
-  };
+  }
 
-  const stop = () => {
-    moduleRef.current.stop();
-    transcriptHistoryRef.current = [];
-    setTranscript('');
-    setInterimTranscript(''); // ← Clear interim too
-    setConnectionStatus('idle');
-  };
+  startAudioStreaming() {
+    const stream = this.audioCapture.getStream();
+    this.mediaRecorder = new MediaRecorder(stream, {
+      mimeType: 'audio/webm'
+    });
 
-  return {
-    isListening,
-    isActive,
-    transcript,
-    interimTranscript, // ← Export interim transcript
-    error,
-    connectionStatus,
-    start,
-    stop,
-    testConnection
-  };
-};
+    let chunkCount = 0;
+    this.mediaRecorder.ondataavailable = async (event) => {
+      if (event.data.size > 0) {
+        chunkCount++;
+        // Only log occasionally to reduce noise
+        if (chunkCount % 20 === 0) {
+          console.log(`📤 Sent ${chunkCount} audio chunks to Deepgram`);
+        }
+        
+        const arrayBuffer = await event.data.arrayBuffer();
+        this.deepgramSTT.sendAudio(arrayBuffer);
+      }
+    };
+
+    this.mediaRecorder.start(250);
+  }
+
+  async stop() {
+    console.log('🛑 Stopping Speech Module...');
+    
+    if (this.mediaRecorder) {
+      this.mediaRecorder.stop();
+      this.mediaRecorder = null;
+    }
+
+    this.audioCapture.stop();
+    this.deepgramSTT.disconnect();
+    
+    // Stop Porcupine if using it
+    if (this.usePorcupine && this.porcupineDetector) {
+      await this.porcupineDetector.release();
+    }
+    
+    this.isListening = false;
+    this.isActive = false;
+    
+    if (this.onStateChange) {
+      this.onStateChange({ isListening: false, isActive: false });
+    }
+    
+    console.log('✅ Speech Module stopped');
+  }
+}

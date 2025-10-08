@@ -1,9 +1,9 @@
 import { AudioCapture } from './AudioCapture.js';
 import { DeepgramSTT } from './DeepgramSTT.js';
 import { SimpleWakeWord } from './SimpleWakeWord.js';
+import { PorcupineWakeWord } from './PorcupineWakeWord.js';
 
-
-export class SpeechModule {
+export class useSpeechModule {
   constructor(config, WakeWordClass = SimpleWakeWord) {
     this.config = config;
     this.audioCapture = new AudioCapture();
