@@ -5,9 +5,11 @@ export const config = {
   
   // IMPORTANT: Use absolute path from public folder (no leading dot)
   // Files in public/ are served from root, so use /models/...
-  wakeWordModel: '/models/Hi-Siri_en_windows_v3_0_0.ppn',
+  // wakeWordModel: '/models/Hi-Siri_en_windows_v3_0_0.ppn',
   
-  wakeWord: 'Hi-siri',  
+  // wakeWord: 'Hi-siri',  
+  wakeWordModel: '@picovoice/porcupine-web/lib/keywords/porcupine.ppn',
+   wakeWord: 'porcupine',
   sleepWord: 'stop',   
   language: 'en-US',
   model: 'nova-2',
