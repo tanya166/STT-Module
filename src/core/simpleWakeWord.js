@@ -1,34 +1,43 @@
-// import { WakeWordDetector } from './WakeWordDetector.js';
-
-// export class SimpleWakeWord extends WakeWordDetector {
-//   checkForWakeWord(text) {
-//     const normalized = text.toLowerCase().trim();
-//     const regex = new RegExp(`\\b${this.wakeWord}\\b`, 'i');
-//     return regex.test(normalized);
-//   }
-
-//   checkForSleepWord(text) {
-//     const normalized = text.toLowerCase().trim();
-//     const regex = new RegExp(`\\b${this.sleepWord}\\b`, 'i');
-//     return regex.test(normalized);
-//   }
-// }
 import { WakeWordDetector } from './WakeWordDetector.js';
 
 export class SimpleWakeWord extends WakeWordDetector {
   checkForWakeWord(text) {
-    if (!this.wakeWord) return false;
+    if (!this.wakeWord) {
+      console.log('⚠️ No wake word configured!');
+      return false;
+    }
     
-    const normalized = text.toLowerCase().trim();
-    const regex = new RegExp(`\\b${this.wakeWord}\\b`, 'i');
-    return regex.test(normalized);
+    // Remove punctuation and normalize
+    const normalized = text.toLowerCase().trim().replace(/[.,!?;:]/g, '');
+    const wakeWordNormalized = this.wakeWord.toLowerCase().trim();
+    
+    console.log(`   Normalized text: "${normalized}"`);
+    console.log(`   Looking for: "${wakeWordNormalized}"`);
+    
+    // Check if wake word is contained in the text
+    const found = normalized.includes(wakeWordNormalized);
+    console.log(`   Match result: ${found}`);
+    
+    return found;
   }
 
   checkForSleepWord(text) {
-    if (!this.sleepWord) return false;
+    if (!this.sleepWord) {
+      console.log('⚠️ No sleep word configured!');
+      return false;
+    }
     
-    const normalized = text.toLowerCase().trim();
-    const regex = new RegExp(`\\b${this.sleepWord}\\b`, 'i');
-    return regex.test(normalized);
+    // Remove punctuation and normalize
+    const normalized = text.toLowerCase().trim().replace(/[.,!?;:]/g, '');
+    const sleepWordNormalized = this.sleepWord.toLowerCase().trim();
+    
+    console.log(`   Normalized text: "${normalized}"`);
+    console.log(`   Looking for: "${sleepWordNormalized}"`);
+    
+    // Check if sleep word is contained in the text
+    const found = normalized.includes(sleepWordNormalized);
+    console.log(`   Match result: ${found}`);
+    
+    return found;
   }
 }

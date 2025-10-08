@@ -24,7 +24,6 @@ function MyApp() {
       }
     };
 
-
     return () => {
       usespeechModule.stop();
     };
