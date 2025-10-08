@@ -4,13 +4,11 @@ import { WebVoiceProcessor } from '@picovoice/web-voice-processor';
 
 export class PorcupineWakeWord extends WakeWordDetector {
   constructor(wakeWord, accessKey, wakeWordModel) {
-    super(wakeWord, null); // No sleep word for Porcupine
+    super(wakeWord, null); 
     this.accessKey = accessKey;
-    this.wakeWordModel = wakeWordModel; // .ppn file for wake word ONLY
+    this.wakeWordModel = wakeWordModel; 
     this.porcupineWorker = null;
     this.isListening = false;
-    
-    // Callback for wake word only
     this.onWakeWordDetected = null;
   }
 
@@ -19,19 +17,29 @@ export class PorcupineWakeWord extends WakeWordDetector {
       console.log('🔧 Initializing Porcupine for WAKE WORD ONLY...');
       
       // Create Porcupine worker with ONLY the wake word model
+      // Note: You need to provide the full path or use base64 for custom models
       this.porcupineWorker = await PorcupineWorker.create(
         this.accessKey,
         [{
           publicPath: this.wakeWordModel,
           label: 'wake',
-          sensitivity: 0.5 // 0-1, higher = more sensitive but more false positives
-        }]
+          sensitivity: 0.5,
+          // Add this if you're having issues with custom models
+          customWritePath: 'porcupine_model'
+        }],
+        // Optional: Specify model path
+        {
+          publicPath: '/porcupine_params.pv', // Path to base Porcupine model
+          // Or use customWritePath if bundling differently
+          customWritePath: 'porcupine_params'
+        }
       );
       
       console.log('✅ Porcupine initialized (wake word only)');
       return true;
     } catch (error) {
       console.error('❌ Porcupine initialization failed:', error);
+      console.error('Error details:', error.message);
       throw error;
     }
   }
@@ -91,18 +99,11 @@ export class PorcupineWakeWord extends WakeWordDetector {
     }
   }
 
-  // These methods are for compatibility with SimpleWakeWord interface
-  // but Porcupine doesn't use text, it uses audio directly
-  // They're here so the class can be swapped with SimpleWakeWord if needed
   checkForWakeWord(text) {
-    // Not used with Porcupine - detection happens in real-time via callbacks
-    // But return false for compatibility
     return false;
   }
 
   checkForSleepWord(text) {
-    // Not used with Porcupine - detection happens in real-time via callbacks
-    // But return false for compatibility
     return false;
   }
 }

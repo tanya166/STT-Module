@@ -1,7 +1,7 @@
 export class WakeWordDetector {
   constructor(wakeWord, sleepWord) {
-    this.wakeWord = wakeWord.toLowerCase();
-    this.sleepWord = sleepWord.toLowerCase();
+   this.wakeWord =wakeWord ? wakeWord.toLowerCase() : null;
+   this.sleepWord = sleepWord ? sleepWord.toLowerCase() : null;
   }
 
   checkForWakeWord(data) {

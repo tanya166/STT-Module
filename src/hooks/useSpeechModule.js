@@ -8,30 +8,18 @@ export class useSpeechModule {
     this.config = config;
     this.audioCapture = new AudioCapture();
     this.deepgramSTT = new DeepgramSTT(config.deepgramApiKey, config);
-    
     this.usePorcupine = config.usePorcupine && config.porcupineAccessKey && config.wakeWordModel;
-    
     if (this.usePorcupine) {
       this.porcupineDetector = new PorcupineWakeWord(
         config.wakeWord,
         config.porcupineAccessKey,
         config.wakeWordModel
       );
-      
-      // Simple text matching for sleep word
       this.simpleDetector = new SimpleWakeWord(null, config.sleepWord);
-    } else {
-      // Fallback: Simple text matching for both
-      this.simpleDetector = new SimpleWakeWord(
-        config.wakeWord,
-        config.sleepWord
-      );
-    }
-    
+    } 
     this.isActive = false;
     this.isListening = false;
     this.mediaRecorder = null;
-    
     this.onTranscriptUpdate = null;
     this.onStateChange = null;
   }
