@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSpeechModule } from './hooks/useSpeechModule'; 
 import { config } from './core/config.js';
+import './speechModuleDemo.css';
 
 function MyApp() {
   const [usespeechModule] = useState(() => new useSpeechModule(config));
@@ -30,79 +31,95 @@ function MyApp() {
   }, [usespeechModule]);
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <h1>Speech Module Demo</h1>
-      
-      <div style={{ marginBottom: '20px' }}>
-        <button 
-          onClick={() => usespeechModule.start()}
-          style={{ 
-            padding: '10px 20px', 
-            marginRight: '10px',
-            fontSize: '16px',
-            backgroundColor: isListening ? '#ccc' : '#4CAF50',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: isListening ? 'not-allowed' : 'pointer'
-          }}
-          disabled={isListening}
-        >
-          Start Listening
-        </button>
-        <button 
-          onClick={() => usespeechModule.stop()}
-          style={{ 
-            padding: '10px 20px',
-            fontSize: '16px',
-            backgroundColor: !isListening ? '#ccc' : '#f44336',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: !isListening ? 'not-allowed' : 'pointer'
-          }}
-          disabled={!isListening}
-        >
-          Stop
-        </button>
-      </div>
+    <div className="speech-container">
+      <div className="speech-wrapper">
+        
+        {/* Header */}
+        <div className="speech-header">
+          <h1 className="speech-title">Speech Module</h1>
+          <p className="speech-subtitle">Voice-activated transcription</p>
+        </div>
 
-      <div style={{ 
-        padding: '15px', 
-        backgroundColor: '#f5f5f5', 
-        borderRadius: '8px',
-        marginBottom: '10px'
-      }}>
-        <strong>Status:</strong> 
-        <span style={{ 
-          marginLeft: '10px',
-          padding: '5px 10px',
-          borderRadius: '4px',
-          backgroundColor: isActive ? '#4CAF50' : '#ff9800',
-          color: 'white',
-          fontWeight: 'bold'
-        }}>
-          {isListening ? (isActive ? '🎤 RECORDING' : '⏸️ Waiting for wake word...') : '❌ Stopped'}
-        </span>
-      </div>
+        {/* Control Card */}
+        <div className="control-card">
+          
+          {/* Buttons */}
+          <div className="button-group">
+            <button 
+              onClick={() => usespeechModule.start()}
+              disabled={isListening}
+              className={`btn ${isListening ? '' : 'btn-start'}`}
+            >
+              Start Listening
+            </button>
+            
+            <button 
+              onClick={() => usespeechModule.stop()}
+              disabled={!isListening}
+              className={`btn ${!isListening ? '' : 'btn-stop'}`}
+            >
+              Stop
+            </button>
+          </div>
 
-      <div style={{ 
-        padding: '15px', 
-        backgroundColor: '#fff', 
-        border: '1px solid #ddd',
-        borderRadius: '8px',
-        minHeight: '100px'
-      }}>
-        <strong>Transcript:</strong>
-        <p style={{ marginTop: '10px', fontSize: '16px', lineHeight: '1.6' }}>
-          {transcript}
-          {interimTranscript && (
-            <span style={{ color: '#888', fontStyle: 'italic' }}>
-              {transcript && ' '}
-              {interimTranscript}
-            </span>
-          )}
-        </p>
+          {/* Status */}
+          <div className="status-container">
+            {isListening ? (
+              isActive ? (
+                <>
+                  <span className="status-dot status-dot-recording"></span>
+                  <span className="status-text status-text-recording">Recording</span>
+                </>
+              ) : (
+                <>
+                  <span className="status-dot status-dot-waiting"></span>
+                  <span className="status-text status-text-waiting">
+                    Waiting for "{config.wakeWord}"
+                  </span>
+                </>
+              )
+            ) : (
+              <>
+                <span className="status-dot status-dot-stopped"></span>
+                <span className="status-text status-text-stopped">Stopped</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Transcript Card */}
+        <div className="transcript-card">
+          <h2 className="transcript-header">
+            <span>📝</span> Transcript
+          </h2>
+          
+          <div className="transcript-content">
+            {transcript || interimTranscript ? (
+              <p className="transcript-text">
+                {transcript}
+                {interimTranscript && (
+                  <span className="transcript-interim">
+                    {transcript && ' '}
+                    {interimTranscript}
+                  </span>
+                )}
+              </p>
+            ) : (
+              <div className="transcript-empty">
+                <div className="transcript-empty-icon">🎤</div>
+                <p className="transcript-empty-text">
+                  {isListening 
+                    ? isActive 
+                      ? 'Start speaking...' 
+                      : `Say "${config.wakeWord}" to begin`
+                    : 'Click "Start Listening" to begin'
+                  }
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
   );
