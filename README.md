@@ -1,6 +1,8 @@
 # Speech Module - Web Application
 
-Voice-activated speech-to-text web application using Deepgram API with wake word detection.
+I have also implemented a mobile-version (app) of the application (using react native ) - https://github.com/tanya166/STT-mobile
+
+Note - I also tried using Porcupine (a wake word detection tool), but it wasn’t flexible enough — it allows two-word phrases or more like “Hey Siri” or “OK Google”. I wanted simple words like “hello” to start and “bye” to stop. So instead of Porcupine, I used an easier method: I checked the transcribed text from Deepgram and applied string matching technique. 
 
 ## 🚀 Features
 
@@ -8,7 +10,6 @@ Voice-activated speech-to-text web application using Deepgram API with wake word
 - Wake word activation ("hello" to start recording)
 - Sleep word deactivation ("bye" to pause recording)
 - Powered by Deepgram AI
-- Clean, modern UI with live status indicators
 
 ## 📋 Prerequisites
 
